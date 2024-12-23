@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file= ".env"
     )
+    PAYMENT_URL: str
+    AUTORIZATION_URL: str
+    
 settings = Settings()
 
 def get_db_url():

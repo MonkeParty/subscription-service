@@ -29,9 +29,6 @@ class Subscription(Base):
 class SubscriptionDAO(BaseDAO):
     model = Subscription()
      
-
-            
-
 class SubsPattern(BaseModel):
     id: int = Field(..., description="")
     user_id: int = Field(..., description="")
@@ -46,3 +43,7 @@ class SubRenewPattern(BaseModel):
     period: int = Field(..., description="")
     autorenewal: bool = Field(..., description="")
     additional_period: int = Field(..., description="")
+
+class JwtToken(BaseModel):
+    user_id: int = Field(...)
+    # sub: bool = Field(...)
