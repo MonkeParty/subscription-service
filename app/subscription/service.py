@@ -1,6 +1,25 @@
 import httpx
+import jwt
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
+from fastapi import HTTPException, Header
 from config import Settings
 from model import JwtToken
+
+def decode_jwt_token(auth_header: str) -> JwtToken:
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid Authorization header")
+    
+    token = auth_header[7:]
+
+    try:
+        decoded_token = jwt.decode(token, Settings.ACCESS_SECRET_KEY, algorithms=Settings.ALGORITHM)
+        return decoded_token
+    
+    except ExpiredSignatureError:
+        raise ValueError("Token has expired")
+    except InvalidTokenError:
+        raise ValueError("Invalid token")
+
 
 async def payment_service_call(payment_data: dict):
     url = f"{Settings.PAYMENT_URL}/payment"
@@ -8,46 +27,48 @@ async def payment_service_call(payment_data: dict):
         response = await client.post(url, json=payment_data)
         return response.json()
     
-async def notify_authorization_service(user_id: int, action: str):
-    
-    url = f"{Settings.AUTHORIZATION_URL}/api/{action}/{user_id}"
+async def notify_aсcount_service(user_id: int, action: str):
+    url = f"{Settings.ACCOUNT_URL}/api/{action}/{user_id}"
     async with httpx.AsyncClient() as client:
         response = await client.post(url)
         return response.json()
 
-async def create_subscription(data: JwtToken):
-    subs_dict = data.model_dump()
+async def create(auth: str = Header(...)):
+    try:
+        data = decode_jwt_token(auth)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    # await SubscriptionDAO.add(**subs_data) логика взаимодействия с бд больше не нужна
-
-    payment_status = await payment_service_call({"user_id": data.user_id})
+    payment_status = await payment_service_call({"user_id": data.id})
 
     if payment_status.get("Success"):
-        await notify_authorization_service(data.user_id, "set_sub")
+        await notify_aсcount_service(data.id, "set_sub")
+        return {"status" : "Subscription successful"}
     else:
-        raise ValueError("Payment failed")
+        raise HTTPException(status_code=400, detail="Payment failed")
 
-    return subs_dict
+async def delete(auth: str = Header(...)):
+    try:
+        data = decode_jwt_token(auth)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-async def unsubscribe(data: JwtToken):
-    subs_dict = data.model_dump()
+    try:
+        status = await notify_aсcount_service(data.id, "unsub")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to communicate with account service")
+    
+    if not status.get("Success"):
+        raise HTTPException(status_code=400, detail="Failed to cancel subscription")
 
-    status = await notify_authorization_service(data.user_id, "unsub")
+    return {"Success": True, "Message": "Subscription successfully canceled"}
 
-    if (status.get("Success") is not True):
-        raise ValueError("Failed to notify authorization service")
-
-    return {"Success" : True, "Message" : "Subscription is successfully canceled"}
-
-async def checksub(data: JwtToken):
-    subs_dict = data.model_dump()
-
-    status = await notify_authorization_service(data.user_id, "checksub")  
-
-    if (status.get("Success") is not True):
-        return {"Message" : "You don't have a subscription"}
-    return {"Success" : True, "Message" : "You have a subscription"}
-
-
-        
-
+async def check(auth: str = Header(...)):
+    try:
+        data = decode_jwt_token(auth)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    if (data.has_sub == True):
+        return {"Success": True, "Message" : "User has a subscription"}
+    return {"Failed" : False, "Message" : "User has not a subscription"}

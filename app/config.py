@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     ACCESS_SECRET_KEY: str
     REFRESH_SECRET_KEY: str
     ALGORITHM: str
+    PAYMENT_URL: str
+    ACCOUNT_URL: str
     model_config = SettingsConfigDict(
         env_file= ".env"
     )
-    PAYMENT_URL: str
-    AUTORIZATION_URL: str
-    
+
 settings = Settings()
 
 def get_db_url():

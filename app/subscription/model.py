@@ -45,5 +45,7 @@ class SubRenewPattern(BaseModel):
     additional_period: int = Field(..., description="")
 
 class JwtToken(BaseModel):
-    user_id: int = Field(...)
-    # sub: bool = Field(...)
+    id: int = Field(...)
+    has_sub: bool = Field(...)
+    name: str = Field(...)
+    is_admin: bool = Field(...)
